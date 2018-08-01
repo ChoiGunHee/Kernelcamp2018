@@ -1,2 +1,2 @@
-kernel//home/fs-kernel-camp-2018/lecture/fat_log_module_practice/fat.ko
-kernel//home/fs-kernel-camp-2018/lecture/fat_log_module_practice/vfat_log_lecture.ko
+kernel//home/kernelcamp-fs-2018/lecture/Kernelcamp2018/fat_log_module_practice/fat.ko
+kernel//home/kernelcamp-fs-2018/lecture/Kernelcamp2018/fat_log_module_practice/vfat_log_lecture.ko

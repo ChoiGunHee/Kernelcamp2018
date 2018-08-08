@@ -4,7 +4,7 @@
  */
 
 #include <linux/blkdev.h>
-#include "fat.h"
+#include "fat_kernel_camp.h"
 
 struct fatent_operations {
 	void (*ent_blocknr)(struct super_block *, int, int *, sector_t *);
@@ -355,7 +355,7 @@ int fat_ent_read(struct inode *inode, struct fat_entry *fatent, int entry)
 
 	if (entry < FAT_START_ENT || sbi->max_cluster <= entry) {
 		fatent_brelse(fatent);
-		fat_fs_error(sb, "invalid access to FAT (entry 0x%08x)", entry);
+		fat_fs_error_kernelcamp(sb, "invalid access to FAT (entry 0x%08x)", entry);
 		return -EIO;
 	}
 
@@ -542,12 +542,12 @@ out:
 		brelse(bhs[i]);
 
 	if (err && idx_clus)
-		fat_free_clusters(inode, cluster[0]);
+		fat_free_clusters_kernelcamp(inode, cluster[0]);
 
 	return err;
 }
 
-int fat_free_clusters(struct inode *inode, int cluster)
+int fat_free_clusters_kernelcamp(struct inode *inode, int cluster)
 {
 	struct super_block *sb = inode->i_sb;
 	struct msdos_sb_info *sbi = MSDOS_SB(sb);
@@ -566,7 +566,7 @@ int fat_free_clusters(struct inode *inode, int cluster)
 			err = cluster;
 			goto error;
 		} else if (cluster == FAT_ENT_FREE) {
-			fat_fs_error(sb, "%s: deleting FAT entry beyond EOF",
+			fat_fs_error_kernelcamp(sb, "%s: deleting FAT entry beyond EOF",
 				     __func__);
 			err = -EIO;
 			goto error;
@@ -628,7 +628,7 @@ error:
 
 	return err;
 }
-//EXPORT_SYMBOL_GPL(fat_free_clusters);
+EXPORT_SYMBOL_GPL(fat_free_clusters_kernelcamp);
 
 /* 128kb is the whole sectors for FAT12 and FAT16 */
 #define FAT_READA_SIZE		(128 * 1024)

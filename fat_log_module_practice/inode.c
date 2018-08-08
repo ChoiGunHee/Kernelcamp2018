@@ -20,7 +20,7 @@
 #include <linux/blkdev.h>
 #include <linux/backing-dev.h>
 #include <asm/unaligned.h>
-#include "fat.h"
+#include "fat_kernel_camp.h"
 
 #ifndef MY_CONFIG_FAT_DEFAULT_IOCHARSET
 /* if user don't select VFAT, this is undefined. */
@@ -104,7 +104,7 @@ int fat_add_cluster(struct inode *inode)
 	 * cluster is writed */
 	err = fat_chain_add(inode, cluster, 1);
 	if (err)
-		fat_free_clusters(inode, cluster);
+		fat_free_clusters_kernelcamp(inode, cluster);
 	return err;
 }
 
@@ -130,7 +130,7 @@ static inline int __fat_get_block(struct inode *inode, sector_t iblock,
 		return 0;
 
 	if (iblock != MSDOS_I(inode)->mmu_private >> sb->s_blocksize_bits) {
-		fat_fs_error(sb, "corrupted file size (i_pos %lld, %lld)",
+		fat_fs_error_kernelcamp(sb, "corrupted file size (i_pos %lld, %lld)",
 			MSDOS_I(inode)->i_pos, MSDOS_I(inode)->mmu_private);
 		return -EIO;
 	}
@@ -177,8 +177,12 @@ static int fat_get_block(struct inode *inode, sector_t iblock,
 	if (err)
 		return err;
 	bh_result->b_size = max_blocks << sb->s_blocksize_bits;
-	/*choigunhee*/
-	if(iblock == 0) log_read_write(sb, inode);
+	
+	/*To Do : kernel camp 2018-08-24 */
+	if(iblock == 0)
+		log_read_write(sb, inode);
+	/*To Do : kernel camp 2018-08-24 */
+
 	return 0;
 }
 
@@ -390,7 +394,7 @@ static void dir_hash_init(struct super_block *sb)
 		INIT_HLIST_HEAD(&sbi->dir_hashtable[i]);
 }
 
-void fat_attach(struct inode *inode, loff_t i_pos)
+void fat_attach_kernelcamp(struct inode *inode, loff_t i_pos)
 {
 	struct msdos_sb_info *sbi = MSDOS_SB(inode->i_sb);
 
@@ -417,9 +421,9 @@ void fat_attach(struct inode *inode, loff_t i_pos)
 		spin_unlock(&sbi->dir_hash_lock);
 	}
 }
-//EXPORT_SYMBOL_GPL(fat_attach);
+EXPORT_SYMBOL_GPL(fat_attach_kernelcamp);
 
-void fat_detach(struct inode *inode)
+void fat_detach_kernelcamp(struct inode *inode)
 {
 	struct msdos_sb_info *sbi = MSDOS_SB(inode->i_sb);
 	spin_lock(&sbi->inode_hash_lock);
@@ -433,7 +437,7 @@ void fat_detach(struct inode *inode)
 		spin_unlock(&sbi->dir_hash_lock);
 	}
 }
-//EXPORT_SYMBOL_GPL(fat_detach);
+EXPORT_SYMBOL_GPL(fat_detach_kernelcamp);
 
 struct inode *fat_iget(struct super_block *sb, loff_t i_pos)
 {
@@ -488,13 +492,13 @@ static int fat_validate_dir(struct inode *dir)
 
 	if (dir->i_nlink < 2) {
 		/* Directory should have "."/".." entries at least. */
-		fat_fs_error(sb, "corrupted directory (invalid entries)");
+		fat_fs_error_kernelcamp(sb, "corrupted directory (invalid entries)");
 		return -EIO;
 	}
 	if (MSDOS_I(dir)->i_start == 0 ||
 	    MSDOS_I(dir)->i_start == MSDOS_SB(sb)->root_cluster) {
 		/* Directory should point valid cluster. */
-		fat_fs_error(sb, "corrupted directory (invalid i_start)");
+		fat_fs_error_kernelcamp(sb, "corrupted directory (invalid i_start)");
 		return -EIO;
 	}
 	return 0;
@@ -576,7 +580,7 @@ static inline void fat_unlock_build_inode(struct msdos_sb_info *sbi)
 		mutex_unlock(&sbi->nfs_build_inode_lock);
 }
 
-struct inode *fat_build_inode(struct super_block *sb,
+struct inode *fat_build_inode_kernelcamp(struct super_block *sb,
 			struct msdos_dir_entry *de, loff_t i_pos)
 {
 	struct inode *inode;
@@ -599,14 +603,14 @@ struct inode *fat_build_inode(struct super_block *sb,
 		inode = ERR_PTR(err);
 		goto out;
 	}
-	fat_attach(inode, i_pos);
+	fat_attach_kernelcamp(inode, i_pos);
 	insert_inode_hash(inode);
 out:
 	fat_unlock_build_inode(MSDOS_SB(sb));
 	return inode;
 }
 
-//EXPORT_SYMBOL_GPL(fat_build_inode);
+EXPORT_SYMBOL_GPL(fat_build_inode_kernelcamp);
 
 static int __fat_write_inode(struct inode *inode, int wait);
 
@@ -648,7 +652,7 @@ static void fat_evict_inode(struct inode *inode)
 	invalidate_inode_buffers(inode);
 	clear_inode(inode);
 	fat_cache_inval_inode(inode);
-	fat_detach(inode);
+	fat_detach_kernelcamp(inode);
 }
 
 static void fat_set_state(struct super_block *sb,
@@ -756,10 +760,23 @@ static void init_once(void *foo)
 	INIT_HLIST_NODE(&ei->i_dir_hash);
 	inode_init_once(&ei->vfs_inode);
 }
-
+/*
 static int __init fat_init_inodecache(void)
 {
 	fat_inode_cachep = kmem_cache_create("fat_inode_cache",
+					     sizeof(struct msdos_inode_info),
+					     0, (SLAB_RECLAIM_ACCOUNT|
+						SLAB_MEM_SPREAD|SLAB_ACCOUNT),
+					     init_once);
+	if (fat_inode_cachep == NULL)
+		return -ENOMEM;
+	return 0;
+}
+*/
+
+static int __init fat_init_inodecache(void)
+{
+	fat_inode_cachep = kmem_cache_create("fat_inode_cache_kernelcamp",
 					     sizeof(struct msdos_inode_info),
 					     0, (SLAB_RECLAIM_ACCOUNT|
 						SLAB_MEM_SPREAD|SLAB_ACCOUNT),
@@ -863,13 +880,13 @@ retry:
 		raw_entry->size = cpu_to_le32(inode->i_size);
 	raw_entry->attr = fat_make_attrs(inode);
 	fat_set_start(raw_entry, MSDOS_I(inode)->i_logstart);
-	fat_time_unix2fat(sbi, &inode->i_mtime, &raw_entry->time,
+	fat_time_unix2fat_kernelcamp(sbi, &inode->i_mtime, &raw_entry->time,
 			  &raw_entry->date, NULL);
 	if (sbi->options.isvfat) {
 		__le16 atime;
-		fat_time_unix2fat(sbi, &inode->i_ctime, &raw_entry->ctime,
+		fat_time_unix2fat_kernelcamp(sbi, &inode->i_ctime, &raw_entry->ctime,
 				  &raw_entry->cdate, &raw_entry->ctime_cs);
-		fat_time_unix2fat(sbi, &inode->i_atime, &atime,
+		fat_time_unix2fat_kernelcamp(sbi, &inode->i_atime, &atime,
 				  &raw_entry->adate, NULL);
 	}
 	spin_unlock(&sbi->inode_hash_lock);
@@ -897,12 +914,12 @@ static int fat_write_inode(struct inode *inode, struct writeback_control *wbc)
 	return err;
 }
 
-int fat_sync_inode(struct inode *inode)
+int fat_sync_inode_kernelcamp(struct inode *inode)
 {
 	return __fat_write_inode(inode, 1);
 }
 
-//EXPORT_SYMBOL_GPL(fat_sync_inode);
+EXPORT_SYMBOL_GPL(fat_sync_inode_kernelcamp);
 
 static int fat_show_options(struct seq_file *m, struct dentry *root);
 static const struct super_operations fat_sops = {
@@ -1585,7 +1602,7 @@ out:
 /*
  * Read the super block of an MS-DOS FS.
  */
-int fat_fill_super(struct super_block *sb, void *data, int silent, int isvfat,
+int fat_fill_super_kernelcamp(struct super_block *sb, void *data, int silent, int isvfat,
 		   void (*setup)(struct super_block *))
 {
 	struct inode *root_inode = NULL, *fat_inode = NULL;
@@ -1734,13 +1751,20 @@ int fat_fill_super(struct super_block *sb, void *data, int silent, int isvfat,
 	sbi->dir_per_block = sb->s_blocksize / sizeof(struct msdos_dir_entry);
 	sbi->dir_per_block_bits = ffs(sbi->dir_per_block) - 1;
 	
-	/* choigunhee */
+	/*To Do : kernel camp 2018-08-24 */	
 	sbi->log_start = sbi->fat_start + sbi->fats * sbi->fat_length;
-	sbi->dir_start = sbi->fat_start + sbi->fats * sbi->fat_length;
-	sbi->log_pos = sbi->log_start*logical_sector_size;
+	sbi->dir_start = sbi->log_start + sbi->fat_length;
+	sbi->log_pos = sbi->log_start * logical_sector_size;
 	sbi->log_max_pos = sbi->dir_start * logical_sector_size;
 	sbi->log_count = 0;
 	
+	printk(KERN_NOTICE"choigunhee,log\n");
+	printk(KERN_NOTICE"choigunhee,dir\n");
+	printk(KERN_NOTICE"choigunhee,log_pos\n");
+	printk(KERN_NOTICE"choigunhee,log_max_pos\n");
+	printk(KERN_NOTICE"choigunhee,log_count\n");
+	
+	/*To Do : kernel camp 2018-08-24 */	
 	
 	sbi->dir_entries = bpb.fat_dir_entries;
 	if (sbi->dir_entries & (sbi->dir_per_block - 1)) {
@@ -1845,7 +1869,7 @@ int fat_fill_super(struct super_block *sb, void *data, int silent, int isvfat,
 	}
 	error = -ENOMEM;
 	insert_inode_hash(root_inode);
-	fat_attach(root_inode, 0);
+	fat_attach_kernelcamp(root_inode, 0);
 	sb->s_root = d_make_root(root_inode);
 	if (!sb->s_root) {
 		fat_msg(sb, KERN_ERR, "get root inode failed");
@@ -1882,10 +1906,10 @@ out_fail:
 	return error;
 }
 
-//EXPORT_SYMBOL_GPL(fat_fill_super);
+EXPORT_SYMBOL_GPL(fat_fill_super_kernelcamp);
 
 /*
- * helper function for fat_flush_inodes.  This writes both the inode
+ * helper function for fat_flush_inodes_kernelcamp.  This writes both the inode
  * and the file data blocks, waiting for in flight data blocks before
  * the start of the call.  It does not wait for any io started
  * during the call
@@ -1913,7 +1937,7 @@ static int writeback_inode(struct inode *inode)
  * page for a block already in flight, we will not wait and start the
  * io over again
  */
-int fat_flush_inodes(struct super_block *sb, struct inode *i1, struct inode *i2)
+int fat_flush_inodes_kernelcamp(struct super_block *sb, struct inode *i1, struct inode *i2)
 {
 	int ret = 0;
 	if (!MSDOS_SB(sb)->options.flush)
@@ -1928,7 +1952,7 @@ int fat_flush_inodes(struct super_block *sb, struct inode *i1, struct inode *i2)
 	}
 	return ret;
 }
-//EXPORT_SYMBOL_GPL(fat_flush_inodes);
+EXPORT_SYMBOL_GPL(fat_flush_inodes_kernelcamp);
 
 static int __init init_fat_fs(void)
 {

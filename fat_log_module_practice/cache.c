@@ -9,7 +9,7 @@
  */
 
 #include <linux/slab.h>
-#include "fat.h"
+#include "fat_kernel_camp.h"
 
 /* this must be > 0. */
 #define FAT_MAX_CACHE	8
@@ -41,10 +41,22 @@ static void init_once(void *foo)
 
 	INIT_LIST_HEAD(&cache->cache_list);
 }
-
+/*
 int __init fat_cache_init(void)
 {
 	fat_cache_cachep = kmem_cache_create("fat_cache",
+				sizeof(struct fat_cache),
+				0, SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD,
+				init_once);
+	if (fat_cache_cachep == NULL)
+		return -ENOMEM;
+	return 0;
+}
+*/
+
+int __init fat_cache_init(void)
+{
+	fat_cache_cachep = kmem_cache_create("fat_cache_kernal_camp",
 				sizeof(struct fat_cache),
 				0, SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD,
 				init_once);
@@ -294,7 +306,7 @@ static int fat_bmap_cluster(struct inode *inode, int cluster)
 	if (ret < 0)
 		return ret;
 	else if (ret == FAT_ENT_EOF) {
-		fat_fs_error(sb, "%s: request beyond EOF (i_pos %lld)",
+		fat_fs_error_kernelcamp(sb, "%s: request beyond EOF (i_pos %lld)",
 			     __func__, MSDOS_I(inode)->i_pos);
 		return -EIO;
 	}

@@ -725,7 +725,8 @@ static struct dentry *vfat_lookup(struct inode *dir, struct dentry *dentry,
 	struct inode *inode;
 	struct dentry *alias;
 	int err;
-
+	
+	printk(KERN_NOTICE"here is lookup start, choi gunhee\n");	
 	mutex_lock(&MSDOS_SB(sb)->s_lock);
 
 	err = vfat_find(dir, &dentry->d_name, &sinfo);
@@ -1074,7 +1075,6 @@ static struct dentry *vfat_mount(struct file_system_type *fs_type,
 		       int flags, const char *dev_name,
 		       void *data)
 {
-	printk(KERN_NOTICE"this mount choigunhee\n");
 	return mount_bdev(fs_type, flags, dev_name, data, vfat_fill_super);
 }
 

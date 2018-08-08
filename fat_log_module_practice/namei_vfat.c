@@ -19,7 +19,7 @@
 #include <linux/ctype.h>
 #include <linux/slab.h>
 #include <linux/namei.h>
-#include "fat.h"
+#include "fat_kernel_camp.h"
 
 static inline unsigned long vfat_d_version(struct dentry *dentry)
 {
@@ -233,7 +233,7 @@ static inline int vfat_is_used_badchars(const wchar_t *s, int len)
 static int vfat_find_form(struct inode *dir, unsigned char *name)
 {
 	struct fat_slot_info sinfo;
-	int err = fat_scan(dir, name, &sinfo);
+	int err = fat_scan_kernelcamp(dir, name, &sinfo);
 	if (err)
 		return -ENOENT;
 	brelse(sinfo.bh);
@@ -652,7 +652,7 @@ shortname:
 	memcpy(de->name, msdos_name, MSDOS_NAME);
 	de->attr = is_dir ? ATTR_DIR : ATTR_ARCH;
 	de->lcase = lcase;
-	fat_time_unix2fat(sbi, ts, &time, &date, &time_cs);
+	fat_time_unix2fat_kernelcamp(sbi, ts, &time, &date, &time_cs);
 	de->time = de->ctime = time;
 	de->date = de->cdate = de->adate = date;
 	de->ctime_cs = time_cs;
@@ -684,14 +684,14 @@ static int vfat_add_entry(struct inode *dir, const struct qstr *qname,
 	if (err)
 		goto cleanup;
 
-	err = fat_add_entries(dir, slots, nr_slots, sinfo);
+	err = fat_add_entries_kernelcamp(dir, slots, nr_slots, sinfo);
 	if (err)
 		goto cleanup;
 
 	/* update timestamp */
 	dir->i_ctime = dir->i_mtime = dir->i_atime = *ts;
 	if (IS_DIRSYNC(dir))
-		(void)fat_sync_inode(dir);
+		(void)fat_sync_inode_kernelcamp(dir);
 	else
 		mark_inode_dirty(dir);
 cleanup:
@@ -705,7 +705,7 @@ static int vfat_find(struct inode *dir, const struct qstr *qname,
 	unsigned int len = vfat_striptail_len(qname);
 	if (len == 0)
 		return -ENOENT;
-	return fat_search_long(dir, qname->name, len, sinfo);
+	return fat_search_long_kernelcamp(dir, qname->name, len, sinfo);
 }
 
 /*
@@ -737,7 +737,7 @@ static struct dentry *vfat_lookup(struct inode *dir, struct dentry *dentry,
 		goto error;
 	}
 
-	inode = fat_build_inode(sb, sinfo.de, sinfo.i_pos);
+	inode = fat_build_inode_kernelcamp(sb, sinfo.de, sinfo.i_pos);
 	brelse(sinfo.bh);
 	if (IS_ERR(inode)) {
 		err = PTR_ERR(inode);
@@ -794,7 +794,7 @@ static int vfat_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 		goto out;
 	dir->i_version++;
 
-	inode = fat_build_inode(sb, sinfo.de, sinfo.i_pos);
+	inode = fat_build_inode_kernelcamp(sb, sinfo.de, sinfo.i_pos);
 	brelse(sinfo.bh);
 	if (IS_ERR(inode)) {
 		err = PTR_ERR(inode);
@@ -819,21 +819,21 @@ static int vfat_rmdir(struct inode *dir, struct dentry *dentry)
 
 	mutex_lock(&MSDOS_SB(sb)->s_lock);
 
-	err = fat_dir_empty(inode);
+	err = fat_dir_empty_kernelcamp(inode);
 	if (err)
 		goto out;
 	err = vfat_find(dir, &dentry->d_name, &sinfo);
 	if (err)
 		goto out;
 
-	err = fat_remove_entries(dir, &sinfo);	/* and releases bh */
+	err = fat_remove_entries_kernelcamp(dir, &sinfo);	/* and releases bh */
 	if (err)
 		goto out;
 	drop_nlink(dir);
 
 	clear_nlink(inode);
 	inode->i_mtime = inode->i_atime = current_time(inode);
-	fat_detach(inode);
+	fat_detach_kernelcamp(inode);
 	vfat_d_version_set(dentry, dir->i_version);
 out:
 	mutex_unlock(&MSDOS_SB(sb)->s_lock);
@@ -854,12 +854,12 @@ static int vfat_unlink(struct inode *dir, struct dentry *dentry)
 	if (err)
 		goto out;
 
-	err = fat_remove_entries(dir, &sinfo);	/* and releases bh */
+	err = fat_remove_entries_kernelcamp(dir, &sinfo);	/* and releases bh */
 	if (err)
 		goto out;
 	clear_nlink(inode);
 	inode->i_mtime = inode->i_atime = current_time(inode);
-	fat_detach(inode);
+	fat_detach_kernelcamp(inode);
 	vfat_d_version_set(dentry, dir->i_version);
 out:
 	mutex_unlock(&MSDOS_SB(sb)->s_lock);
@@ -878,7 +878,7 @@ static int vfat_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 	mutex_lock(&MSDOS_SB(sb)->s_lock);
 
 	ts = current_time(dir);
-	cluster = fat_alloc_new_dir(dir, &ts);
+	cluster = fat_alloc_new_dir_kernelcamp(dir, &ts);
 	if (cluster < 0) {
 		err = cluster;
 		goto out;
@@ -889,7 +889,7 @@ static int vfat_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 	dir->i_version++;
 	inc_nlink(dir);
 
-	inode = fat_build_inode(sb, sinfo.de, sinfo.i_pos);
+	inode = fat_build_inode_kernelcamp(sb, sinfo.de, sinfo.i_pos);
 	brelse(sinfo.bh);
 	if (IS_ERR(inode)) {
 		err = PTR_ERR(inode);
@@ -907,7 +907,7 @@ static int vfat_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 	return 0;
 
 out_free:
-	fat_free_clusters(dir, cluster);
+	fat_free_clusters_kernelcamp(dir, cluster);
 out:
 	mutex_unlock(&MSDOS_SB(sb)->s_lock);
 	return err;
@@ -940,7 +940,7 @@ static int vfat_rename(struct inode *old_dir, struct dentry *old_dentry,
 	is_dir = S_ISDIR(old_inode->i_mode);
 	update_dotdot = (is_dir && old_dir != new_dir);
 	if (update_dotdot) {
-		if (fat_get_dotdot_entry(old_inode, &dotdot_bh, &dotdot_de)) {
+		if (fat_get_dotdot_entry_kernelcamp(old_inode, &dotdot_bh, &dotdot_de)) {
 			err = -EIO;
 			goto out;
 		}
@@ -949,12 +949,12 @@ static int vfat_rename(struct inode *old_dir, struct dentry *old_dentry,
 	ts = current_time(old_dir);
 	if (new_inode) {
 		if (is_dir) {
-			err = fat_dir_empty(new_inode);
+			err = fat_dir_empty_kernelcamp(new_inode);
 			if (err)
 				goto out;
 		}
 		new_i_pos = MSDOS_I(new_inode)->i_pos;
-		fat_detach(new_inode);
+		fat_detach_kernelcamp(new_inode);
 	} else {
 		err = vfat_add_entry(new_dir, &new_dentry->d_name, is_dir, 0,
 				     &ts, &sinfo);
@@ -964,10 +964,10 @@ static int vfat_rename(struct inode *old_dir, struct dentry *old_dentry,
 	}
 	new_dir->i_version++;
 
-	fat_detach(old_inode);
-	fat_attach(old_inode, new_i_pos);
+	fat_detach_kernelcamp(old_inode);
+	fat_attach_kernelcamp(old_inode, new_i_pos);
 	if (IS_DIRSYNC(new_dir)) {
-		err = fat_sync_inode(old_inode);
+		err = fat_sync_inode_kernelcamp(old_inode);
 		if (err)
 			goto error_inode;
 	} else
@@ -986,14 +986,14 @@ static int vfat_rename(struct inode *old_dir, struct dentry *old_dentry,
  			inc_nlink(new_dir);
 	}
 
-	err = fat_remove_entries(old_dir, &old_sinfo);	/* and releases bh */
+	err = fat_remove_entries_kernelcamp(old_dir, &old_sinfo);	/* and releases bh */
 	old_sinfo.bh = NULL;
 	if (err)
 		goto error_dotdot;
 	old_dir->i_version++;
 	old_dir->i_ctime = old_dir->i_mtime = ts;
 	if (IS_DIRSYNC(old_dir))
-		(void)fat_sync_inode(old_dir);
+		(void)fat_sync_inode_kernelcamp(old_dir);
 	else
 		mark_inode_dirty(old_dir);
 
@@ -1021,24 +1021,24 @@ error_dotdot:
 		corrupt |= sync_dirty_buffer(dotdot_bh);
 	}
 error_inode:
-	fat_detach(old_inode);
-	fat_attach(old_inode, old_sinfo.i_pos);
+	fat_detach_kernelcamp(old_inode);
+	fat_attach_kernelcamp(old_inode, old_sinfo.i_pos);
 	if (new_inode) {
-		fat_attach(new_inode, new_i_pos);
+		fat_attach_kernelcamp(new_inode, new_i_pos);
 		if (corrupt)
-			corrupt |= fat_sync_inode(new_inode);
+			corrupt |= fat_sync_inode_kernelcamp(new_inode);
 	} else {
 		/*
 		 * If new entry was not sharing the data cluster, it
 		 * shouldn't be serious corruption.
 		 */
-		int err2 = fat_remove_entries(new_dir, &sinfo);
+		int err2 = fat_remove_entries_kernelcamp(new_dir, &sinfo);
 		if (corrupt)
 			corrupt |= err2;
 		sinfo.bh = NULL;
 	}
 	if (corrupt < 0) {
-		fat_fs_error(new_dir->i_sb,
+		fat_fs_error_kernelcamp(new_dir->i_sb,
 			     "%s: Filesystem corrupted (i_pos %lld)",
 			     __func__, sinfo.i_pos);
 	}
@@ -1052,8 +1052,8 @@ static const struct inode_operations vfat_dir_inode_operations = {
 	.mkdir		= vfat_mkdir,
 	.rmdir		= vfat_rmdir,
 	.rename		= vfat_rename,
-	.setattr	= fat_setattr,
-	.getattr	= fat_getattr,
+	.setattr	= fat_setattr_kernelcamp,
+	.getattr	= fat_getattr_kernelcamp,
 };
 
 static void setup(struct super_block *sb)
@@ -1067,13 +1067,14 @@ static void setup(struct super_block *sb)
 
 static int vfat_fill_super(struct super_block *sb, void *data, int silent)
 {
-	return fat_fill_super(sb, data, silent, 1, setup);
+	return fat_fill_super_kernelcamp(sb, data, silent, 1, setup);
 }
 
 static struct dentry *vfat_mount(struct file_system_type *fs_type,
 		       int flags, const char *dev_name,
 		       void *data)
 {
+	printk(KERN_NOTICE"choigunhee, mount\n");
 	return mount_bdev(fs_type, flags, dev_name, data, vfat_fill_super);
 }
 

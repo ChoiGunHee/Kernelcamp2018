@@ -2,10 +2,10 @@
 # Makefile for the Linux fat filesystem support.
 #
 NAME=vfat_log_lecture
-obj-m += fat.o
+obj-m += fat_kernel_camp.o
 obj-m += $(NAME).o
 
-fat-y := cache.o dir.o fatent.o file.o inode.o misc.o nfs.o fat_log.o
+fat_kernel_camp-y := cache.o dir.o fatent.o file.o inode.o misc.o nfs.o fat_log.o
 $(NAME)-objs := namei_vfat.o
 
 KDIR:=/lib/modules/$(shell uname -r)/build

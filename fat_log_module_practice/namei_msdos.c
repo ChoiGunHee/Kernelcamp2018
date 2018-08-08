@@ -7,7 +7,7 @@
  */
 
 #include <linux/module.h>
-#include "fat.h"
+#include "fat_kernel_camp.h"
 
 /* Characters that are undesirable in an MS-DOS file name */
 static unsigned char bad_chars[] = "*?<>|\"";
@@ -245,7 +245,7 @@ static int msdos_add_entry(struct inode *dir, const unsigned char *name,
 	fat_set_start(&de, cluster);
 	de.size = 0;
 
-	err = fat_add_entries(dir, &de, 1, sinfo);
+	err = fat_add_entries_kernelcamp(dir, &de, 1, sinfo);
 	if (err)
 		return err;
 

@@ -15,7 +15,7 @@
 #include <linux/fsnotify.h>
 #include <linux/security.h>
 #include <linux/falloc.h>
-#include "fat.h"
+#include "fat_kernel_camp.h"
 
 static long fat_fallocate(struct file *file, int mode,
 			  loff_t offset, loff_t len);
@@ -94,7 +94,7 @@ static int fat_ioctl_set_attributes(struct file *file, u32 __user *user_attr)
 		goto out_unlock_inode;
 
 	/* This MUST be done before doing anything irreversible... */
-	err = fat_setattr(file->f_path.dentry, &ia);
+	err = fat_setattr_kernelcamp(file->f_path.dentry, &ia);
 	if (err)
 		goto out_unlock_inode;
 
@@ -151,7 +151,7 @@ static int fat_file_release(struct inode *inode, struct file *filp)
 {
 	if ((filp->f_mode & FMODE_WRITE) &&
 	     MSDOS_SB(inode->i_sb)->options.flush) {
-		fat_flush_inodes(inode->i_sb, inode, NULL);
+		fat_flush_inodes_kernelcamp(inode->i_sb, inode, NULL);
 		congestion_wait(BLK_RW_ASYNC, HZ/10);
 	}
 	return 0;
@@ -299,7 +299,7 @@ static int fat_free(struct inode *inode, int skip)
 	MSDOS_I(inode)->i_attrs |= ATTR_ARCH;
 	inode->i_ctime = inode->i_mtime = current_time(inode);
 	if (wait) {
-		err = fat_sync_inode(inode);
+		err = fat_sync_inode_kernelcamp(inode);
 		if (err) {
 			MSDOS_I(inode)->i_start = i_start;
 			MSDOS_I(inode)->i_logstart = i_logstart;
@@ -325,7 +325,7 @@ static int fat_free(struct inode *inode, int skip)
 			fatent_brelse(&fatent);
 			return 0;
 		} else if (ret == FAT_ENT_FREE) {
-			fat_fs_error(sb,
+			fat_fs_error_kernelcamp(sb,
 				     "%s: invalid cluster chain (i_pos %lld)",
 				     __func__, MSDOS_I(inode)->i_pos);
 			ret = -EIO;
@@ -343,7 +343,7 @@ static int fat_free(struct inode *inode, int skip)
 	inode->i_blocks = skip << (MSDOS_SB(sb)->cluster_bits - 9);
 
 	/* Freeing the remained cluster chain */
-	return fat_free_clusters(inode, free_start);
+	return fat_free_clusters_kernelcamp(inode, free_start);
 }
 
 void fat_truncate_blocks(struct inode *inode, loff_t offset)
@@ -362,10 +362,10 @@ void fat_truncate_blocks(struct inode *inode, loff_t offset)
 	nr_clusters = (offset + (cluster_size - 1)) >> sbi->cluster_bits;
 
 	fat_free(inode, nr_clusters);
-	fat_flush_inodes(inode->i_sb, inode, NULL);
+	fat_flush_inodes_kernelcamp(inode->i_sb, inode, NULL);
 }
 
-int fat_getattr(const struct path *path, struct kstat *stat,
+int fat_getattr_kernelcamp(const struct path *path, struct kstat *stat,
 		u32 request_mask, unsigned int flags)
 {
 	struct inode *inode = d_inode(path->dentry);
@@ -378,7 +378,7 @@ int fat_getattr(const struct path *path, struct kstat *stat,
 	}
 	return 0;
 }
-//EXPORT_SYMBOL_GPL(fat_getattr);
+EXPORT_SYMBOL_GPL(fat_getattr_kernelcamp);
 
 static int fat_sanitize_mode(const struct msdos_sb_info *sbi,
 			     struct inode *inode, umode_t *mode_ptr)
@@ -437,7 +437,7 @@ static int fat_allow_set_time(struct msdos_sb_info *sbi, struct inode *inode)
 /* valid file mode bits */
 #define FAT_VALID_MODE	(S_IFREG | S_IFDIR | S_IRWXUGO)
 
-int fat_setattr(struct dentry *dentry, struct iattr *attr)
+int fat_setattr_kernelcamp(struct dentry *dentry, struct iattr *attr)
 {
 	struct msdos_sb_info *sbi = MSDOS_SB(dentry->d_sb);
 	struct inode *inode = d_inode(dentry);
@@ -514,9 +514,9 @@ int fat_setattr(struct dentry *dentry, struct iattr *attr)
 out:
 	return error;
 }
-//EXPORT_SYMBOL_GPL(fat_setattr);
+EXPORT_SYMBOL_GPL(fat_setattr_kernelcamp);
 
 const struct inode_operations fat_file_inode_operations = {
-	.setattr	= fat_setattr,
-	.getattr	= fat_getattr,
+	.setattr	= fat_setattr_kernelcamp,
+	.getattr	= fat_getattr_kernelcamp,
 };

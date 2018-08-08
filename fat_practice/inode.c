@@ -1610,7 +1610,8 @@ int fat_fill_super(struct super_block *sb, void *data, int silent, int isvfat,
 	int debug;
 	long error;
 	char buf[50];
-
+	
+	printk(KERN_NOTICE"choigunhee, fat_fill_super\n");
 	/*
 	 * GFP_KERNEL is ok here, because while we do hold the
 	 * superblock lock, memory pressure can't call back into

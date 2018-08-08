@@ -17,15 +17,10 @@
 #include <linux/blkdev.h>
 #include <linux/kernel.h> 
 #include <asm/unaligned.h>
-#include "fat.h"
-
-
-//#define CREATE_TRACE_POINTS
-//#include "fat_trace.h"
-
+#include "fat_kernel_camp.h"
 
 /*
- * Linux Kernel Camp 2017-08-23
+ * Linux Kernel Camp 2018-08-24
  *
  * get msdos_dir_entry through blocknr where the file exist and the offset of the file in the directory 
  * 
@@ -47,7 +42,7 @@ struct msdos_dir_entry* get_dir_entry_from_blocknr(struct super_block*sb, sector
 
 
 /*
- * Linux Kernel Camp 2017-08-23
+ * Linux Kernel Camp 2018-08-24
  *
  * Log read or write event in log area
  *
@@ -93,8 +88,6 @@ int log_read_write(struct super_block *sb,struct inode *inode )
 
 	brelse(bh_de);
 
-//	log_sectornr = sbi->log_pos / (sbi->sector_size); 
-		
 	log_sectornr = sbi->log_pos / SECTOR_SIZE; 
 
 	offset = (sbi->log_pos) & (sb->s_blocksize - 1);
@@ -111,8 +104,6 @@ free_log_none:
 	kfree(log);
 	brelse(bh_log);
 out:
-    /* use your own tracepoint  */
-
 	kfree(log);
 	brelse(bh_log);
 	sbi->log_pos += sizeof(struct fat_log_entry);

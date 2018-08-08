@@ -6,7 +6,7 @@
  *		 and date_dos2unix for date==0 by Igor Zhbanov(bsg@uniyar.ac.ru)
  */
 
-#include "fat.h"
+#include "fat_kernel_camp.h"
 
 /*
  * fat_fs_error reports a file system problem that might indicate fa data
@@ -16,7 +16,7 @@
  * In case the file system is remounted read-only, it can be made writable
  * again by remounting it.
  */
-void __fat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
+void __fat_fs_error_kernelcamp(struct super_block *sb, int report, const char *fmt, ...)
 {
 	struct fat_mount_options *opts = &MSDOS_SB(sb)->options;
 	va_list args;
@@ -37,7 +37,7 @@ void __fat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
 		fat_msg(sb, KERN_ERR, "Filesystem has been set read-only");
 	}
 }
-//EXPORT_SYMBOL_GPL(__fat_fs_error);
+EXPORT_SYMBOL_GPL(__fat_fs_error_kernelcamp);
 
 /**
  * fat_msg() - print preformated FAT specific messages. Every thing what is
@@ -143,14 +143,14 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)
 		 * we sync here only directories.
 		 */
 		if (S_ISDIR(inode->i_mode) && IS_DIRSYNC(inode)) {
-			ret = fat_sync_inode(inode);
+			ret = fat_sync_inode_kernelcamp(inode);
 			if (ret)
 				return ret;
 		} else
 			mark_inode_dirty(inode);
 	}
 	if (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {
-		fat_fs_error(sb, "clusters badly computed (%d != %llu)",
+		fat_fs_error_kernelcamp(sb, "clusters badly computed (%d != %llu)",
 			     new_fclus,
 			     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));
 		fat_cache_inval_inode(inode);
@@ -224,7 +224,7 @@ void fat_time_fat2unix(struct msdos_sb_info *sbi, struct timespec *ts,
 }
 
 /* Convert linear UNIX date to a FAT time/date pair. */
-void fat_time_unix2fat(struct msdos_sb_info *sbi, struct timespec *ts,
+void fat_time_unix2fat_kernelcamp(struct msdos_sb_info *sbi, struct timespec *ts,
 		       __le16 *time, __le16 *date, u8 *time_cs)
 {
 	struct tm tm;
@@ -260,7 +260,7 @@ void fat_time_unix2fat(struct msdos_sb_info *sbi, struct timespec *ts,
 	if (time_cs)
 		*time_cs = (ts->tv_sec & 1) * 100 + ts->tv_nsec / 10000000;
 }
-//EXPORT_SYMBOL_GPL(fat_time_unix2fat);
+EXPORT_SYMBOL_GPL(fat_time_unix2fat_kernelcamp);
 
 int fat_sync_bhs(struct buffer_head **bhs, int nr_bhs)
 {

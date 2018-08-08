@@ -179,7 +179,8 @@ static int fat_get_block(struct inode *inode, sector_t iblock,
 	bh_result->b_size = max_blocks << sb->s_blocksize_bits;
 	
 	/*To Do : kernel camp 2018-08-24 */
-	//here
+	if(iblock == 0)
+		log_read_write(sb, inode);
 	/*To Do : kernel camp 2018-08-24 */
 
 	return 0;
@@ -1751,8 +1752,11 @@ int fat_fill_super_kernelcamp(struct super_block *sb, void *data, int silent, in
 	sbi->dir_per_block_bits = ffs(sbi->dir_per_block) - 1;
 	
 	/*To Do : kernel camp 2018-08-24 */	
-	//here
+	sbi->log_start = sbi->fat_start + sbi->fats * sbi->fat_length;
 	sbi->dir_start = sbi->log_start + sbi->fat_length;
+	sbi->log_pos = sbi->log_start * logical_sector_size;
+	sbi->log_max_pos = sbi->dir_start * logical_sector_size;
+	sbi->log_count = 0;
 	/*To Do : kernel camp 2018-08-24 */	
 	
 	sbi->dir_entries = bpb.fat_dir_entries;

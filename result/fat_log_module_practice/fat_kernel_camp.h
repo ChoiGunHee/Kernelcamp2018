@@ -430,7 +430,14 @@ extern const struct export_operations fat_export_ops_nostale;
 typedef unsigned long long	llu;
 
 /*To Do (Start) : kernel camp 2018-08-24 */
-//here
+struct fat_log_entry
+{
+	__u8 name[MSDOS_NAME];	//file name
+	__le16 date;		//log time
+	__le16 time;		//log date
+};
+
+int log_read_write(struct super_block *sb, struct inode *inode);
 /*To Do (Start) : kernel camp 2018-08-24 */
 
 #endif /* !_FAT_H */

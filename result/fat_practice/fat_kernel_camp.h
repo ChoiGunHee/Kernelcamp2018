@@ -101,14 +101,6 @@ struct msdos_sb_info {
 
 	unsigned int dirty;           /* fs state before mount */
 	struct rcu_head rcu;
-
-	/*To Do : kernel camp 2018-08-24 */
-	unsigned long log_start;
-	unsigned long log_pos;
-	unsigned long log_max_pos;
-	unsigned long log_count;
-	/*To Do : kernel camp 2018-08-24 */
-
 };
 
 #define FAT_CACHE_VALID	0	/* special case for valid cache */
@@ -301,20 +293,20 @@ extern int fat_bmap(struct inode *inode, sector_t sector, sector_t *phys,
 
 /* fat/dir.c */
 extern const struct file_operations fat_dir_operations;
-extern int fat_search_long_kernelcamp(struct inode *inode, const unsigned char *name,
+extern int fat_search_long(struct inode *inode, const unsigned char *name,
 			   int name_len, struct fat_slot_info *sinfo);
-extern int fat_dir_empty_kernelcamp(struct inode *dir);
+extern int fat_dir_empty(struct inode *dir);
 extern int fat_subdirs(struct inode *dir);
-extern int fat_scan_kernelcamp(struct inode *dir, const unsigned char *name,
+extern int fat_scan(struct inode *dir, const unsigned char *name,
 		    struct fat_slot_info *sinfo);
 extern int fat_scan_logstart(struct inode *dir, int i_logstart,
 			     struct fat_slot_info *sinfo);
-extern int fat_get_dotdot_entry_kernelcamp(struct inode *dir, struct buffer_head **bh,
+extern int fat_get_dotdot_entry(struct inode *dir, struct buffer_head **bh,
 				struct msdos_dir_entry **de);
-extern int fat_alloc_new_dir_kernelcamp(struct inode *dir, struct timespec *ts);
-extern int fat_add_entries_kernelcamp(struct inode *dir, void *slots, int nr_slots,
+extern int fat_alloc_new_dir(struct inode *dir, struct timespec *ts);
+extern int fat_add_entries(struct inode *dir, void *slots, int nr_slots,
 			   struct fat_slot_info *sinfo);
-extern int fat_remove_entries_kernelcamp(struct inode *dir, struct fat_slot_info *sinfo);
+extern int fat_remove_entries(struct inode *dir, struct fat_slot_info *sinfo);
 
 /* fat/fatent.c */
 struct fat_entry {
@@ -362,7 +354,7 @@ extern int fat_ent_write(struct inode *inode, struct fat_entry *fatent,
 			 int new, int wait);
 extern int fat_alloc_clusters(struct inode *inode, int *cluster,
 			      int nr_cluster);
-extern int fat_free_clusters_kernelcamp(struct inode *inode, int cluster);
+extern int fat_free_clusters(struct inode *inode, int cluster);
 extern int fat_count_free_clusters(struct super_block *sb);
 
 /* fat/file.c */
@@ -370,26 +362,26 @@ extern long fat_generic_ioctl(struct file *filp, unsigned int cmd,
 			      unsigned long arg);
 extern const struct file_operations fat_file_operations;
 extern const struct inode_operations fat_file_inode_operations;
-extern int fat_setattr_kernelcamp(struct dentry *dentry, struct iattr *attr);
+extern int fat_setattr(struct dentry *dentry, struct iattr *attr);
 extern void fat_truncate_blocks(struct inode *inode, loff_t offset);
-extern int fat_getattr_kernelcamp(const struct path *path, struct kstat *stat,
+extern int fat_getattr(const struct path *path, struct kstat *stat,
 		       u32 request_mask, unsigned int flags);
 extern int fat_file_fsync(struct file *file, loff_t start, loff_t end,
 			  int datasync);
 
 /* fat/inode.c */
 extern int fat_block_truncate_page(struct inode *inode, loff_t from);
-extern void fat_attach_kernelcamp(struct inode *inode, loff_t i_pos);
-extern void fat_detach_kernelcamp(struct inode *inode);
+extern void fat_attach(struct inode *inode, loff_t i_pos);
+extern void fat_detach(struct inode *inode);
 extern struct inode *fat_iget(struct super_block *sb, loff_t i_pos);
-extern struct inode *fat_build_inode_kernelcamp(struct super_block *sb,
+extern struct inode *fat_build_inode(struct super_block *sb,
 			struct msdos_dir_entry *de, loff_t i_pos);
-extern int fat_sync_inode_kernelcamp(struct inode *inode);
-extern int fat_fill_super_kernelcamp(struct super_block *sb, void *data, int silent,
+extern int fat_sync_inode(struct inode *inode);
+extern int fat_fill_super(struct super_block *sb, void *data, int silent,
 			  int isvfat, void (*setup)(struct super_block *));
 extern int fat_fill_inode(struct inode *inode, struct msdos_dir_entry *de);
 
-extern int fat_flush_inodes_kernelcamp(struct super_block *sb, struct inode *i1,
+extern int fat_flush_inodes(struct super_block *sb, struct inode *i1,
 			    struct inode *i2);
 static inline unsigned long fat_dir_hash(int logstart)
 {
@@ -399,11 +391,11 @@ extern int fat_add_cluster(struct inode *inode);
 
 /* fat/misc.c */
 extern __printf(3, 4) __cold
-void __fat_fs_error_kernelcamp(struct super_block *sb, int report, const char *fmt, ...);
-#define fat_fs_error_kernelcamp(sb, fmt, args...)		\
-	__fat_fs_error_kernelcamp(sb, 1, fmt , ## args)
+void __fat_fs_error(struct super_block *sb, int report, const char *fmt, ...);
+#define fat_fs_error(sb, fmt, args...)		\
+	__fat_fs_error(sb, 1, fmt , ## args)
 #define fat_fs_error_ratelimit(sb, fmt, args...) \
-	__fat_fs_error_kernelcamp(sb, __ratelimit(&MSDOS_SB(sb)->ratelimit), fmt , ## args)
+	__fat_fs_error(sb, __ratelimit(&MSDOS_SB(sb)->ratelimit), fmt , ## args)
 __printf(3, 4) __cold
 void fat_msg(struct super_block *sb, const char *level, const char *fmt, ...);
 #define fat_msg_ratelimit(sb, level, fmt, args...)	\
@@ -415,7 +407,7 @@ extern int fat_clusters_flush(struct super_block *sb);
 extern int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster);
 extern void fat_time_fat2unix(struct msdos_sb_info *sbi, struct timespec *ts,
 			      __le16 __time, __le16 __date, u8 time_cs);
-extern void fat_time_unix2fat_kernelcamp(struct msdos_sb_info *sbi, struct timespec *ts,
+extern void fat_time_unix2fat(struct msdos_sb_info *sbi, struct timespec *ts,
 			      __le16 *time, __le16 *date, u8 *time_cs);
 extern int fat_sync_bhs(struct buffer_head **bhs, int nr_bhs);
 
@@ -428,9 +420,5 @@ extern const struct export_operations fat_export_ops_nostale;
 
 /* helper for printk */
 typedef unsigned long long	llu;
-
-/*To Do (Start) : kernel camp 2018-08-24 */
-//here
-/*To Do (Start) : kernel camp 2018-08-24 */
 
 #endif /* !_FAT_H */

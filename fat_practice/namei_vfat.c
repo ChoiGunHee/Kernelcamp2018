@@ -726,7 +726,6 @@ static struct dentry *vfat_lookup(struct inode *dir, struct dentry *dentry,
 	struct dentry *alias;
 	int err;
 	
-	printk(KERN_NOTICE"here is lookup start, choi gunhee\n");	
 	mutex_lock(&MSDOS_SB(sb)->s_lock);
 
 	err = vfat_find(dir, &dentry->d_name, &sinfo);
